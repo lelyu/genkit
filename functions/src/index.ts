@@ -45,11 +45,23 @@ const summarizeDataFlow = ai.defineFlow(
   },
   async ({prompt}, {context}) => {
     // if (!context.auth?.uid) throw new Error("Must supply auth context.");
-      const res = await generateResponseFromGemini({ prompt: prompt });
-      console.log('hello from summarize Data Flow')
+    const res = await generateResponseFromGemini({ prompt: prompt });
+    if (context) {
+      console.log(context.auth.uid)
+    }
+    console.log('hello from summarize Data Flow')
+    console.log(res)
     return res;
   }
 );
+
+
+const summary = summarizeDataFlow({ prompt: "What is your name" }, {
+  context: {
+    auth: {
+      uid: "a test uid"
+}}});
+
 
 export const summarizeData = onCallGenkit(
   {
