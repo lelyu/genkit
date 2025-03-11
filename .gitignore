@@ -72,3 +72,5 @@ node_modules/
 package-lock.json
 
 .genkit/
+
+functions/package-lock.json
