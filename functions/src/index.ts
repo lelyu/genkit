@@ -187,7 +187,7 @@ async function generateResponseFromGemini(
       topP: 0.4,
       topK: 50,
     },
-    tools: [getAllItems, getAllLists],
+    tools: [getAllItems, getAllLists, getAllFolders],
   });
   return text;
 }
