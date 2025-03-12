@@ -164,7 +164,6 @@ const getAllFolders = ai.defineTool(
 );
 
 
-
 /**
  * Generates a response using the Gemini model.
  *
