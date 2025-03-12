@@ -27,11 +27,11 @@ const ai = genkit({
 });
 
 
-// Define a tool that fetches user data
-const getUserData = ai.defineTool(
+// Define a tool that fetches user items
+const getAllItems = ai.defineTool(
   {
-    name: "getUserData",
-    description: "Gets the user data for the current user",
+    name: "getAllItems",
+    description: "Gets all the items created by the current user user",
     inputSchema: z.object({
       userId: z.string().describe("The user ID to fetch data for"),
     }),
@@ -74,6 +74,51 @@ const getUserData = ai.defineTool(
 );
 
 
+// Define a tool that fetches user lists
+const getAllLists = ai.defineTool(
+  {
+    name: "getAllLists",
+    description: "Gets all the lists created by the current user user",
+    inputSchema: z.object({
+      userId: z.string().describe("The user ID to fetch data for"),
+    }),
+    outputSchema: z.array(
+      z.object({
+        id: z.string().describe("The ID of the list"),
+        name: z.string().describe("The name of the list"),
+        dateCreated: z.string().describe("The date the" +
+           " list was created"),
+        description: z.string().optional().describe("The description " +
+          "of the list"),
+        dateModified: z.string().optional().describe("The date the list " +
+          "was modified"),
+      })
+    ),
+  },
+  async ({userId}) => {
+    // Return an empty array if no userId is provided.
+    if (!userId) return [];
+    // Query the "items" collection group using the Admin SDK.
+    const listQuery = db.collectionGroup("lists").
+      where("createdBy", "==", userId);
+    const querySnapshot = await listQuery.get();
+    const res = querySnapshot.docs.map((list) => {
+      const data = list.data();
+      return {
+        id: list.id,
+        name: data.name,
+        dateCreated: data.dateCreated.toDate().toLocaleString(),
+        description: data.description || "",
+        dateModified: data.dateModified ?
+          data.dateModified.toDate().toLocaleString() :
+          "",
+      };
+    });
+    return res;
+  }
+);
+
+
 /**
  * Generates a response using the Gemini model.
  *
@@ -96,7 +141,7 @@ async function generateResponseFromGemini(
       topP: 0.4,
       topK: 50,
     },
-    tools: [getUserData],
+    tools: [getAllItems, getAllLists],
   });
   return text;
 }
