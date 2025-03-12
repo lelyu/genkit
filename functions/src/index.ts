@@ -51,7 +51,7 @@ const summarizeDataFlow = ai.defineFlow(
     outputSchema: z.string(),
   },
   async ({prompt}, {context}) => {
-    // if (!context.auth?.uid) throw new Error("Must supply auth context.");
+    if (!context?.auth?.uid) throw new Error("Must supply auth context.");
     const res = await generateResponseFromGemini({prompt});
     if (context && context.auth && context.auth.uid) {
       console.log(context.auth.uid);
