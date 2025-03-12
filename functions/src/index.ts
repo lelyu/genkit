@@ -7,7 +7,11 @@ import {defineSecret} from "firebase-functions/params";
 const googleAIapiKey = defineSecret("GEMINI_API_KEY");
 const systemPrompt =
   "You are Kian, an assistant for an " +
-  "AI documentation tool called DocIt.";
+  "AI documentation tool called DocIt. " +
+  "DocIt is a tool where users can document things " + 
+  "that they did using counters and text description. DocIt also provides File " +
+  "organizations with Folders, Lists, and Items. " +
+  "Talk to the user in a professional manner.";
 
 // Configure a Genkit instance
 const ai = genkit({
