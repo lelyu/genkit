@@ -3,6 +3,12 @@ import {genkit} from "genkit/beta";
 import {z} from "genkit";
 import {onCallGenkit, hasClaim} from "firebase-functions/https";
 import {defineSecret} from "firebase-functions/params";
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from "firebase-admin/firestore";
+
+
+const app = initializeApp();
+const db = getFirestore(app);
 
 const googleAIapiKey = defineSecret("GEMINI_API_KEY");
 const systemPrompt =
@@ -19,6 +25,52 @@ const ai = genkit({
   model: gemini15Flash,
 });
 
+
+
+// Define a tool that fetches user data
+const getUserData = ai.defineTool(
+  {
+    name: "getUserData",
+    description: "Gets the user data for the current user",
+    inputSchema: z.object({
+      userId: z.string().describe("The user ID to fetch data for"),
+    }),
+    outputSchema: z.array(
+      z.object({
+        id: z.string().describe("The ID of the item"),
+        name: z.string().describe("The name of the item"),
+        count: z.number().describe("The count of the item"),
+        dateCreated: z.string().describe("The date the item was created"),
+        description: z.string().optional().describe("The description of the item"),
+        dateModified: z.string().optional().describe("The date the item was modified"),
+      })
+    ),
+  },
+  async ({ userId }) => {
+    // Return an empty array if no userId is provided.
+    if (!userId) return [];
+    // Query the "items" collection group using the Admin SDK.
+    const itemsQuery = db.collectionGroup("items").where("createdBy", "==", userId);
+    const querySnapshot = await itemsQuery.get();
+    const res = querySnapshot.docs.map((item) => {
+      const data = item.data();
+      return {
+        id: item.id,
+        name: data.name,
+        count: data.count,
+        dateCreated: data.dateCreated.toDate().toLocaleString(),
+        description: data.description || "",
+        dateModified: data.dateModified
+          ? data.dateModified.toDate().toLocaleString()
+          : "",
+      };
+    });
+    return res;
+  }
+);
+
+
+
 /**
  * Generates a response using the Gemini model.
  *
@@ -26,13 +78,14 @@ const ai = genkit({
  * @return {Promise<string>} The generated response text.
  */
 async function generateResponseFromGemini(
-  data: {prompt: string}
+  data: {prompt: string, userId: string}
 ): Promise<string> {
-  const {prompt} = data;
+  const {prompt, userId} = data;
+  const augmentedPrompt = `${prompt}\nUserId: ${userId}`;
 
   const {text} = await ai.generate({
     system: systemPrompt,
-    prompt,
+    prompt: augmentedPrompt,
     config: {
       maxOutputTokens: 400,
       stopSequences: ["<end>", "<fin>"],
@@ -40,6 +93,7 @@ async function generateResponseFromGemini(
       topP: 0.4,
       topK: 50,
     },
+    tools: [getUserData],
   });
   return text;
 }
@@ -52,20 +106,12 @@ const summarizeDataFlow = ai.defineFlow(
   },
   async ({prompt}, {context}) => {
     if (!context?.auth?.uid) throw new Error("Must supply auth context.");
-    const res = await generateResponseFromGemini({prompt});
-    if (context && context.auth && context.auth.uid) {
-      console.log(context.auth.uid);
-    }
-    console.log("hello from summarize Data Flow");
-    console.log(res);
+    const res = await generateResponseFromGemini({prompt, userId: context.auth.uid});
     return res;
   }
 );
 
-// const summary = summarizeDataFlow(
-//   {prompt: "What is your name"},
-//   {context: {auth: {uid: "a test uid"}}}
-// );
+
 
 export const summarizeData = onCallGenkit(
   {
@@ -74,3 +120,4 @@ export const summarizeData = onCallGenkit(
   },
   summarizeDataFlow
 );
+
