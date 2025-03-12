@@ -78,7 +78,7 @@ const getAllItems = ai.defineTool(
 const getAllLists = ai.defineTool(
   {
     name: "getAllLists",
-    description: "Gets all the lists created by the current user user",
+    description: "Gets all the lists created by the current user",
     inputSchema: z.object({
       userId: z.string().describe("The user ID to fetch data for"),
     }),
@@ -117,6 +117,52 @@ const getAllLists = ai.defineTool(
     return res;
   }
 );
+
+
+// Define a tool that fetches user folders
+const getAllFolders = ai.defineTool(
+  {
+    name: "getAllFolders",
+    description: "Gets all the folders created by the current user",
+    inputSchema: z.object({
+      userId: z.string().describe("The user ID to fetch data for"),
+    }),
+    outputSchema: z.array(
+      z.object({
+        id: z.string().describe("The ID of the folder"),
+        name: z.string().describe("The name of the folder"),
+        dateCreated: z.string().describe("The date the" +
+           " folder was created"),
+        description: z.string().optional().describe("The description " +
+          "of the folder"),
+        dateModified: z.string().optional().describe("The date the folder " +
+          "was modified"),
+      })
+    ),
+  },
+  async ({userId}) => {
+    // Return an empty array if no userId is provided.
+    if (!userId) return [];
+    // Query the "items" collection group using the Admin SDK.
+    const folderQuery = db.collectionGroup("folders").
+      where("createdBy", "==", userId);
+    const querySnapshot = await folderQuery.get();
+    const res = querySnapshot.docs.map((folder) => {
+      const data = folder.data();
+      return {
+        id: folder.id,
+        name: data.name,
+        dateCreated: data.dateCreated.toDate().toLocaleString(),
+        description: data.description || "",
+        dateModified: data.dateModified ?
+          data.dateModified.toDate().toLocaleString() :
+          "",
+      };
+    });
+    return res;
+  }
+);
+
 
 
 /**
